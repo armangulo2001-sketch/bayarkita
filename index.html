@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BayarKita - Bayar Tagihan & Isi Pulsa</title>
+
+    <!-- Bootstrap 5 via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- QRCode.js -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        /* ============================================================
+           ROOT VARIABLES & GLOBAL STYLE
+           ============================================================ */
+        :root {
+            --primary: #0d6e4b;
+            --primary-light: #10a06e;
+            --primary-dark: #094d33;
+            --secondary: #f8b400;
+            --bg-light: #f0f7f4;
+            --text-dark: #1a2a2a;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            --radius: 16px;
+            --transition: 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            min-height: 100vh;
+            padding-top: 70px;
+            /* offset for fixed navbar */
+        }
+
+        /* scrollbar custom */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e4e9e7;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        /* ============================================================
+           NAVBAR
+           ============================================================ */
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.6rem;
+            color: white !important;
+            letter-spacing: -0.5px;
+        }
+        .navbar-brand i {
+            color: var(--secondary);
+            margin-right: 8px;
+        }
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            box-shadow: 0 2px 20px rgba(13, 110, 75, 0.25);
+        }
+        .navbar .nav-link {
+            color: rgba(255, 255, 255, 0.85) !important;
+            font-weight: 500;
+            padding: 10px 18px;
+            border-radius: 10px;
+            transition: var(--transition);
+        }
+        .navbar .nav-link:hover,
+        .navbar .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white !important;
+        }
+        .navbar .nav-link i {
+            margin-right: 6px;
+        }
+        .badge-saldo {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .badge-saldo i {
+            color: var(--secondary);
+            margin-right: 6px;
+        }
+
+        /* ============================================================
+           SECTION / PAGE CONTAINER
+           ============================================================ */
+        .page-section {
+            display: none;
+            animation: fadeUp 0.45s ease forwards;
+        }
+        .page-section.active {
+            display: block;
+        }
+
+        @keyframes fadeUp {
+            0% {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================================
+           CARDS & COMPONENTS
+           ============================================================ */
+        .card-custom {
+            background: white;
+            border: none;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card-custom:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary-custom {
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .btn-primary-custom:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(13, 110, 75, 0.3);
+            color: white;
+        }
+        .btn-secondary-custom {
+            background: var(--secondary);
+            border: none;
+            color: #1a2a2a;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .btn-secondary-custom:hover {
+            background: #e0a000;
+            transform: translateY(-2px);
+            color: #1a2a2a;
+        }
+        .btn-outline-custom {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 22px;
+            border-radius: 40px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        .btn-outline-custom:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .provider-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 16px;
+        }
+        .provider-item {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px 10px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+        .provider-item:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+        .provider-item.selected {
+            border-color: var(--primary);
+            background: #eafaf3;
+        }
+        .provider-item img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            margin-bottom: 8px;
+        }
+        .provider-item span {
+            display: block;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .nominal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+            gap: 12px;
+        }
+        .nominal-btn {
+            background: white;
+            border: 2px solid #e4e9e7;
+            border-radius: 12px;
+            padding: 12px 6px;
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .nominal-btn:hover {
+            border-color: var(--primary);
+        }
+        .nominal-btn.selected {
+            border-color: var(--primary);
+            background: #eafaf3;
+        }
+
+        /* ============================================================
+           FORM & VALIDATION
+           ============================================================ */
+        .form-control,
+        .form-select {
+            border-radius: 12px;
+            padding: 12px 16px;
+            border: 2px solid #e4e9e7;
+            transition: var(--transition);
+        }
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(13, 110, 75, 0.15);
+        }
+        .form-control.is-invalid {
+            border-color: #dc3545;
+        }
+        .invalid-feedback {
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        /* ============================================================
+           MODAL CUSTOM
+           ============================================================ */
+        .modal-content {
+            border-radius: var(--radius);
+            border: none;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+        }
+        .modal-header {
+            border-bottom: 2px solid #f0f7f4;
+            padding: 1.5rem;
+        }
+        .modal-footer {
+            border-top: 2px solid #f0f7f4;
+            padding: 1.5rem;
+        }
+
+        /* ============================================================
+           TOAST NOTIFICATION
+           ============================================================ */
+        .toast-container-custom {
+            position: fixed;
+            top: 90px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 400px;
+            width: 100%;
+        }
+        .toast-custom {
+            background: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            border-left: 6px solid var(--primary);
+            animation: slideIn 0.4s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .toast-custom.error {
+            border-left-color: #dc3545;
+        }
+        .toast-custom.success {
+            border-left-color: var(--primary);
+        }
+        .toast-custom.info {
+            border-left-color: #0dcaf0;
+        }
+        .toast-custom i {
+            font-size: 1.4rem;
+        }
+        .toast-custom .toast-close {
+            margin-left: auto;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: #999;
+        }
+
+        @keyframes slideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(40px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* ============================================================
+           LOADING SPINNER
+           ============================================================ */
+        .spinner-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(4px);
+            z-index: 9998;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .spinner-overlay.show {
+            display: flex;
+        }
+        .spinner-overlay .spinner-text {
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 28px;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ============================================================
+           TABLE RIWAYAT
+           ============================================================ */
+        .table-custom {
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .table-custom thead {
+            background: var(--primary);
+            color: white;
+        }
+        .table-custom th,
+        .table-custom td {
+            padding: 14px 18px;
+            vertical-align: middle;
+        }
+        .table-custom tbody tr:hover {
+            background: #f8fdfa;
+        }
+        .status-badge {
+            padding: 4px 16px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .status-badge.sukses {
+            background: #d4edda;
+            color: #0d6e4b;
+        }
+        .status-badge.gagal {
+            background: #f8d7da;
+            color: #b02a37;
+        }
+        .status-badge.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* ============================================================
+           RESPONSIVE TWEAKS (Desktop Focused — NIM Ganjil)
+           ============================================================ */
+        @media (min-width: 992px) {
+            .container {
+                max-width: 1200px;
+            }
+            .card-custom {
+                padding: 2rem;
+            }
+            /* bigger cards on desktop */
+            .provider-grid {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            }
+            .nominal-grid {
+                grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            }
+        }
+
+        @media (max-width: 767px) {
+            body {
+                padding-top: 60px;
+            }
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+            .badge-saldo {
+                font-size: 0.75rem;
+                padding: 4px 12px;
+            }
+            .provider-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .nominal-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .toast-container-custom {
+                right: 12px;
+                left: 12px;
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .provider-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .nominal-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* print style for struk */
+        @media print {
+            .navbar,
+            .no-print {
+                display: none !important;
+            }
+            body {
+                padding-top: 0 !important;
+                background: white !important;
+            }
+            .card-custom {
+                box-shadow: none !important;
+                border: 1px solid #ddd !important;
+            }
+            .modal {
+                position: static !important;
+                display: block !important;
+                background: white !important;
+            }
+            .modal-backdrop {
+                display: none !important;
+            }
+            .modal-dialog {
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+            .modal-content {
+                box-shadow: none !important;
+                border: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+    NAVBAR
+    ============================================================ -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-hand-holding-usd"></i> BayarKita
+            </a>
+            <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                <i class="fas fa-bars fs-4"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-page="dashboard" href="#"><i class="fas fa-home"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="tagihan" href="#"><i class="fas fa-file-invoice"></i> Bayar Tagihan</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="spp" href="#"><i class="fas fa-graduation-cap"></i> Biaya Kuliah</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="pulsa" href="#"><i class="fas fa-sim-card"></i> Pulsa & Paket</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="riwayat" href="#"><i class="fas fa-history"></i> Riwayat</a>
+                    </li>
+                </ul>
+                <span class="badge-saldo">
+                    <i class="fas fa-wallet"></i> Saldo: <span id="saldoDisplay">Rp0</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ============================================================
+    TOAST CONTAINER
+    ============================================================ -->
+    <div class="toast-container-custom" id="toastContainer"></div>
+
+    <!-- ============================================================
+    LOADING OVERLAY
+    ============================================================ -->
+    <div class="spinner-overlay" id="loadingOverlay">
+        <div class="spinner-border text-light" style="width: 60px; height: 60px;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="spinner-text" id="loadingText">Memproses...</div>
+    </div>
+
+    <!-- ============================================================
+    MAIN CONTENT
+    ============================================================ -->
+    <main class="container py-4">
+
+        <!-- ==========================================================
+        SECTION: DASHBOARD
+        ========================================================== -->
+        <section id="page-dashboard" class="page-section active">
+            <div class="row g-4">
+                <!-- saldo card -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card-custom d-flex align-items-center gap-4">
+                        <div class="bg-success bg-opacity-10 p-4 rounded-4">
+                            <i class="fas fa-wallet fs-1 text-success"></i>
+                        </div>
+                        <div>
+                            <small class="text-secondary">Saldo Anda</small>
+                            <h2 class="fw-bold" id="dashSaldo">Rp0</h2>
+                            <button class="btn btn-sm btn-outline-custom mt-1" onclick="tambahSaldo()">
+                                <i class="fas fa-plus-circle"></i> Tambah Saldo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- quick stats -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card-custom d-flex align-items-center gap-4">
+                        <div class="bg-info bg-opacity-10 p-4 rounded-4">
+                            <i class="fas fa-receipt fs-1 text-info"></i>
+                        </div>
+                        <div>
+                            <small class="text-secondary">Total Transaksi</small>
+                            <h2 class="fw-bold" id="dashTotalTransaksi">0</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="card-custom d-flex align-items-center gap-4">
+                        <div class="bg-warning bg-opacity-10 p-4 rounded-4">
+                            <i class="fas fa-clock fs-1 text-warning"></i>
+                        </div>
+                        <div>
+                            <small class="text-secondary">Tagihan Belum Lunas</small>
+                            <h2 class="fw-bold" id="dashPending">0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- quick access -->
+            <div class="card-custom mt-3">
+                <h5 class="fw-bold mb-3"><i class="fas fa-bolt text-primary"></i> Akses Cepat</h5>
+                <div class="d-flex flex-wrap gap-3">
+                    <button class="btn btn-primary-custom" onclick="navigateTo('tagihan')">
+                        <i class="fas fa-file-invoice"></i> Bayar Tagihan
+                    </button>
+                    <button class="btn btn-secondary-custom" onclick="navigateTo('spp')">
+                        <i class="fas fa-graduation-cap"></i> Biaya Kuliah
+                    </button>
+                    <button class="btn btn-outline-custom" onclick="navigateTo('pulsa')">
+                        <i class="fas fa-sim-card"></i> Isi Pulsa
+                    </button>
+                </div>
+            </div>
+
+            <!-- promo banner -->
+            <div class="card-custom bg-primary text-white" style="background: linear-gradient(135deg, var(--primary-dark), var(--primary)) !important;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap">
+                    <div>
+                        <h4 class="fw-bold"><i class="fas fa-gift text-warning"></i> Promo Spesial!</h4>
+                        <p class="mb-0 opacity-75">Bayar tagihan > Rp100.000 dapat cashback 5%</p>
+                    </div>
+                    <span class="badge bg-warning text-dark fs-6 px-4 py-2">Berlaku 31 Des 2026</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+        SECTION: BAYAR TAGIHAN (Listrik, PDAM, Internet, Seminar)
+        ========================================================== -->
+        <section id="page-tagihan" class="page-section">
+            <h4 class="fw-bold mb-3"><i class="fas fa-file-invoice text-primary"></i> Bayar Tagihan</h4>
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <div class="card-custom">
+                        <label class="fw-bold mb-2">Pilih Kategori</label>
+                        <select class="form-select" id="tagihanKategori">
+                            <option value="pln">Listrik (PLN)</option>
+                            <option value="pdam">PDAM</option>
+                            <option value="internet">Internet</option>
+                            <option value="seminar">Seminar / Event</option>
+                        </select>
+
+                        <label class="fw-bold mt-3 mb-2">Nomor Pelanggan / ID</label>
+                        <input type="text" class="form-control" id="tagihanNomor" placeholder="Masukkan nomor pelanggan..." />
+                        <div class="invalid-feedback" id="tagihanNomorFeedback"></div>
+
+                        <button class="btn btn-primary-custom w-100 mt-3" onclick="cekTagihan()">
+                            <i class="fas fa-search"></i> Cek Tagihan
+                        </button>
+                    </div>
+
+                    <!-- metode pembayaran -->
+                    <div class="card-custom" id="metodePembayaranContainer" style="display:none;">
+                        <h6 class="fw-bold"><i class="fas fa-credit-card text-primary"></i> Metode Pembayaran</h6>
+                        <div class="d-flex flex-wrap gap-3 mt-2">
+                            <button class="btn btn-outline-custom metode-btn" data-metode="va" onclick="pilihMetode('va')">
+                                <i class="fas fa-university"></i> Virtual Account
+                            </button>
+                            <button class="btn btn-outline-custom metode-btn" data-metode="qris" onclick="pilihMetode('qris')">
+                                <i class="fas fa-qrcode"></i> QRIS
+                            </button>
+                            <button class="btn btn-outline-custom metode-btn" data-metode="teller" onclick="pilihMetode('teller')">
+                                <i class="fas fa-building"></i> Teller / Kasir
+                            </button>
+                        </div>
+                        <div id="metodeDetail" class="mt-3 p-3 bg-light rounded-4"></div>
+                        <button class="btn btn-success w-100 mt-3" id="bayarTagihanBtn" style="display:none;" onclick="prosesBayarTagihan()">
+                            <i class="fas fa-check-circle"></i> Bayar Sekarang
+                        </button>
+                    </div>
+                </div>
+
+                <!-- hasil cek tagihan -->
+                <div class="col-lg-7">
+                    <div class="card-custom" id="hasilTagihanCard" style="display:none;">
+                        <h5 class="fw-bold"><i class="fas fa-receipt text-primary"></i> Detail Tagihan</h5>
+                        <div id="hasilTagihanContent"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+        SECTION: BIAYA KULIAH / SPP
+        ========================================================== -->
+        <section id="page-spp" class="page-section">
+            <h4 class="fw-bold mb-3"><i class="fas fa-graduation-cap text-primary"></i> Biaya Kuliah / SPP</h4>
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <div class="card-custom">
+                        <label class="fw-bold mb-2">Masukkan NIM</label>
+                        <input type="text" class="form-control" id="sppNim" placeholder="Contoh: 202310001" />
+                        <div class="invalid-feedback" id="sppNimFeedback"></div>
+                        <button class="btn btn-primary-custom w-100 mt-3" onclick="cekTagihanSPP()">
+                            <i class="fas fa-search"></i> Lihat Tagihan Semester
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="card-custom" id="sppResultCard" style="display:none;">
+                        <h5 class="fw-bold"><i class="fas fa-list-check text-primary"></i> Daftar Cicilan Semester</h5>
+                        <div id="sppResultContent"></div>
+                        <hr />
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">Total Dipilih: <span id="sppTotalBayar">Rp0</span></span>
+                            <button class="btn btn-success" onclick="prosesBayarSPP()">
+                                <i class="fas fa-check-circle"></i> Bayar Terpilih
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+        SECTION: PULSA & PAKET DATA
+        ========================================================== -->
+        <section id="page-pulsa" class="page-section">
+            <h4 class="fw-bold mb-3"><i class="fas fa-sim-card text-primary"></i> Isi Pulsa & Paket Data</h4>
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card-custom">
+                        <label class="fw-bold mb-2">Pilih Provider</label>
+                        <div class="provider-grid" id="providerGrid"></div>
+
+                        <label class="fw-bold mt-3 mb-2">Nomor HP</label>
+                        <input type="text" class="form-control" id="pulsaNomor" placeholder="08xxxxxxxxxx" />
+                        <div class="invalid-feedback" id="pulsaNomorFeedback"></div>
+
+                        <label class="fw-bold mt-3 mb-2">Pilih Nominal</label>
+                        <div class="nominal-grid" id="nominalGrid"></div>
+
+                        <label class="fw-bold mt-3 mb-2">Atau nominal custom</label>
+                        <input type="number" class="form-control" id="pulsaCustom" placeholder="Masukkan nominal lain..." min="5000" />
+
+                        <button class="btn btn-primary-custom w-100 mt-3" onclick="cekPulsa()">
+                            <i class="fas fa-calculator"></i> Preview & Bayar
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card-custom" id="pulsaPreview" style="display:none;">
+                        <h5 class="fw-bold"><i class="fas fa-eye text-primary"></i> Preview</h5>
+                        <div id="pulsaPreviewContent"></div>
+                        <button class="btn btn-success w-100 mt-3" onclick="prosesBayarPulsa()">
+                            <i class="fas fa-check-circle"></i> Konfirmasi & Bayar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================
+        SECTION: RIWAYAT
+        ========================================================== -->
+        <section id="page-riwayat" class="page-section">
+            <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+                <h4 class="fw-bold"><i class="fas fa-history text-primary"></i> Riwayat Transaksi</h4>
+                <div>
+                    <button class="btn btn-sm btn-outline-custom" onclick="filterRiwayat('semua')">Semua</button>
+                    <button class="btn btn-sm btn-outline-custom" onclick="filterRiwayat('sukses')">Sukses</button>
+                    <button class="btn btn-sm btn-outline-custom" onclick="filterRiwayat('gagal')">Gagal</button>
+                    <button class="btn btn-sm btn-danger" onclick="clearRiwayat()"><i class="fas fa-trash"></i> Hapus</button>
+                </div>
+            </div>
+            <div class="card-custom">
+                <div class="table-responsive">
+                    <table class="table table-custom" id="riwayatTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Tanggal</th>
+                                <th>Layanan</th>
+                                <th>Deskripsi</th>
+                                <th>Jumlah</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riwayatBody">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Belum ada transaksi</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============================================================
+    MODAL STRUK / BUKTI PEMBAYARAN
+    ============================================================ -->
+    <div class="modal fade" id="strukModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-receipt text-primary"></i> Bukti Pembayaran</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="strukBody">
+                    <!-- dynamic content -->
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary-custom no-print" onclick="window.print()">
+                        <i class="fas fa-print"></i> Cetak
+                    </button>
+                    <button class="btn btn-primary-custom no-print" onclick="downloadPDFStruk()">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </button>
+                    <button class="btn btn-outline-custom no-print" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+    BOOTSTRAP JS
+    ============================================================ -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+    </script>
+
+    <!-- ============================================================
+    MAIN APPLICATION JAVASCRIPT
+    ============================================================ -->
+    <script>
+        (function() {
+            'use strict';
+
+            // =============================================================
+            // 1. DATA DUMMY
+            // =============================================================
+            const billData = {
+                pln: {
+                    '123456789012': { name: 'Budi Santoso', address: 'Jl. Merdeka No. 10, Jakarta', amount: 245000,
+                        period: 'Jan 2026', dueDate: '2026-02-10', fine: 0 },
+                    '234567890123': { name: 'Siti Rahayu', address: 'Jl. Sudirman No. 5, Bandung', amount: 512000,
+                        period: 'Jan 2026', dueDate: '2026-02-15', fine: 15000 },
+                    '345678901234': { name: 'Agus Wijaya', address: 'Jl. Diponegoro No. 8, Surabaya', amount: 187500,
+                        period: 'Jan 2026', dueDate: '2026-02-08', fine: 0 },
+                    '456789012345': { name: 'Dewi Lestari', address: 'Jl. Gatot Subroto No. 22, Medan', amount: 734000,
+                        period: 'Jan 2026', dueDate: '2026-02-20', fine: 25000 },
+                    '567890123456': { name: 'Rudi Hartono', address: 'Jl. Ahmad Yani No. 15, Makassar', amount: 410000,
+                        period: 'Jan 2026', dueDate: '2026-02-12', fine: 0 },
+                },
+                pdam: {
+                    '987654321012': { name: 'Ani Mulyani', address: 'Jl. Cendana No. 3, Jakarta', amount: 85000,
+                        period: 'Jan 2026', dueDate: '2026-02-18', fine: 0 },
+                    '876543210123': { name: 'Bambang Prayogo', address: 'Jl. Melati No. 7, Bandung', amount: 120000,
+                        period: 'Jan 2026', dueDate: '2026-02-22', fine: 5000 },
+                    '765432101234': { name: 'Citra Kirana', address: 'Jl. Kenanga No. 12, Surabaya', amount: 95000,
+                        period: 'Jan 2026', dueDate: '2026-02-14', fine: 0 },
+                },
+                internet: {
+                    '998877665544': { name: 'Doni Firmansyah', address: 'Jl. Mawar No. 9, Jakarta', amount: 350000,
+                        period: 'Jan 2026', dueDate: '2026-02-25', fine: 0 },
+                    '887766554433': { name: 'Eka Putri', address: 'Jl. Anggrek No. 4, Bandung', amount: 275000,
+                        period: 'Jan 2026', dueDate: '2026-02-28', fine: 0 },
+                    '776655443322': { name: 'Fajar Nugroho', address: 'Jl. Flamboyan No. 6, Yogyakarta', amount: 425000,
+                        period: 'Jan 2026', dueDate: '2026-02-20', fine: 10000 },
+                },
+                seminar: {
+                    'SEM-2026-001': { name: 'Workshop AI & Data Science', address: 'Online - Zoom', amount: 150000,
+                        period: '2026-03-15', dueDate: '2026-03-10', fine: 0 },
+                    'SEM-2026-002': { name: 'Seminar Kewirausahaan', address: 'Hotel Santika, Jakarta', amount: 250000,
+                        period: '2026-03-20', dueDate: '2026-03-15', fine: 0 },
+                    'SEM-2026-003': { name: 'Web Development Bootcamp', address: 'Online - Google Meet',
+                        amount: 500000, period: '2026-04-01', dueDate: '2026-03-28', fine: 0 },
+                },
+                spp: {
+                    '202310001': {
+                        name: 'Andi Prasetyo',
+                        semester: 'Ganjil 2025/2026',
+                        cicilan: [
+                            { id: 1, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-1', amount: 2500000,
+                                status: 'lunas' },
+                            { id: 2, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-2', amount: 2500000,
+                                status: 'lunas' },
+                            { id: 3, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-3', amount: 2500000,
+                                status: 'unpaid' },
+                            { id: 4, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-4', amount: 2500000,
+                                status: 'unpaid' },
+                            { id: 5, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-5', amount: 2500000,
+                                status: 'unpaid' },
+                            { id: 6, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-6', amount: 2500000,
+                                status: 'unpaid' },
+                        ]
+                    },
+                    '202310002': {
+                        name: 'Bella Safira',
+                        semester: 'Genap 2025/2026',
+                        cicilan: [
+                            { id: 1, desc: 'SPP Semester Genap 2025/2026 - Cicilan ke-1', amount: 2000000,
+                                status: 'lunas' },
+                            { id: 2, desc: 'SPP Semester Genap 2025/2026 - Cicilan ke-2', amount: 2000000,
+                                status: 'unpaid' },
+                            { id: 3, desc: 'SPP Semester Genap 2025/2026 - Cicilan ke-3', amount: 2000000,
+                                status: 'unpaid' },
+                            { id: 4, desc: 'SPP Semester Genap 2025/2026 - Cicilan ke-4', amount: 2000000,
+                                status: 'unpaid' },
+                            { id: 5, desc: 'SPP Semester Genap 2025/2026 - Cicilan ke-5', amount: 2000000,
+                                status: 'unpaid' },
+                            { id: 6, desc: 'SPP Semester Genap 2025/2026 - Cicilan ke-6', amount: 2000000,
+                                status: 'unpaid' },
+                            { id: 7, desc: 'SPP Semester Genap 2025/2026 - Cicilan ke-7', amount: 2000000,
+                                status: 'unpaid' },
+                            { id: 8, desc: 'SPP Semester Genap 2025/2026 - Cicilan ke-8', amount: 2000000,
+                                status: 'unpaid' },
+                        ]
+                    },
+                    '202310003': {
+                        name: 'Cahya Kurniawan',
+                        semester: 'Ganjil 2025/2026',
+                        cicilan: [
+                            { id: 1, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-1', amount: 1800000,
+                                status: 'lunas' },
+                            { id: 2, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-2', amount: 1800000,
+                                status: 'lunas' },
+                            { id: 3, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-3', amount: 1800000,
+                                status: 'lunas' },
+                            { id: 4, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-4', amount: 1800000,
+                                status: 'unpaid' },
+                            { id: 5, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-5', amount: 1800000,
+                                status: 'unpaid' },
+                            { id: 6, desc: 'SPP Semester Ganjil 2025/2026 - Cicilan ke-6', amount: 1800000,
+                                status: 'unpaid' },
+                        ]
+                    }
+                }
+            };
+
+            // Provider mapping for pulsa
+            const providerPrefix = {
+                telkomsel: ['0811', '0812', '0813', '0821', '0822', '0852', '0853'],
+                xl: ['0817', '0818', '0819', '0859', '0877', '0878'],
+                indosat: ['0814', '0815', '0816', '0855', '0856', '0857'],
+                tri: ['0895', '0896', '0897', '0898', '0899'],
+                smartfren: ['0881', '0882', '0883', '0884', '0885', '0886', '0887', '0888', '0889'],
+                axis: ['0831', '0832', '0833', '0838'],
+            };
+
+            const nominalPulsa = [10000, 25000, 50000, 100000, 200000];
+            const providers = [
+                { id: 'telkomsel', label: 'Telkomsel', icon: '📱' },
+                { id: 'xl', label: 'XL Axiata', icon: '📶' },
+                { id: 'indosat', label: 'Indosat', icon: '📡' },
+                { id: 'tri', label: 'Tri (3)', icon: '📲' },
+                { id: 'smartfren', label: 'Smartfren', icon: '🌐' },
+                { id: 'axis', label: 'Axis', icon: '⚡' },
+            ];
+
+            // =============================================================
+            // 2. STATE
+            // =============================================================
+            let state = {
+                saldo: 500000,
+                transaksi: [],
+                selectedProvider: null,
+                selectedNominal: null,
+                selectedMetode: null,
+                tagihanData: null, // for tagihan
+                sppData: null, // for spp
+                pulsaData: null, // for pulsa
+                filterStatus: 'semua',
+                sppSelected: [],
+            };
+
+            // =============================================================
+            // 3. UTILITY FUNCTIONS
+            // =============================================================
+            function formatRupiah(num) {
+                return 'Rp' + Number(num).toLocaleString('id-ID');
+            }
+
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+            }
+
+            function getToday() {
+                return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            }
+
+            function getNow() {
+                return new Date().toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit' });
+            }
+
+            function generateVA() {
+                return 'VA-' + Date.now().toString().slice(-10) + Math.floor(Math.random() * 100).toString().padStart(2,
+                '0');
+            }
+
+            // =============================================================
+            // 4. LOCAL STORAGE
+            // =============================================================
+            function loadState() {
+                try {
+                    const saved = localStorage.getItem('bayarkita_state');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        state.saldo = parsed.saldo || 500000;
+                        state.transaksi = parsed.transaksi || [];
+                    }
+                } catch (e) { console.warn('Gagal load state', e); }
+            }
+
+            function saveState() {
+                try {
+                    localStorage.setItem('bayarkita_state', JSON.stringify({
+                        saldo: state.saldo,
+                        transaksi: state.transaksi,
+                    }));
+                } catch (e) { console.warn('Gagal save state', e); }
+            }
+
+            // =============================================================
+            // 5. TOAST NOTIFICATION
+            // =============================================================
+            function showToast(message, type = 'info', duration = 3500) {
+                const container = document.getElementById('toastContainer');
+                const icons = {
+                    success: 'fa-check-circle text-success',
+                    error: 'fa-times-circle text-danger',
+                    info: 'fa-info-circle text-info',
+                };
+                const toast = document.createElement('div');
+                toast.className = `toast-custom ${type}`;
+                toast.innerHTML = `
+                    <i class="fas ${icons[type] || icons.info}"></i>
+                    <span class="flex-grow-1">${message}</span>
+                    <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+                `;
+                container.appendChild(toast);
+                setTimeout(() => {
+                    if (toast.parentElement) toast.remove();
+                }, duration);
+            }
+
+            // =============================================================
+            // 6. LOADING
+            // =============================================================
+            function showLoading(text = 'Memproses...') {
+                document.getElementById('loadingText').textContent = text;
+                document.getElementById('loadingOverlay').classList.add('show');
+            }
+
+            function hideLoading() {
+                document.getElementById('loadingOverlay').classList.remove('show');
+            }
+
+            // =============================================================
+            // 7. NAVIGATION
+            // =============================================================
+            function navigateTo(page) {
+                document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+                document.getElementById('page-' + page).classList.add('active');
+                document.querySelectorAll('.navbar .nav-link').forEach(el => el.classList.remove('active'));
+                document.querySelector(`.navbar .nav-link[data-page="${page}"]`)?.classList.add('active');
+                // update dashboard stats if needed
+                if (page === 'dashboard') updateDashboard();
+                if (page === 'riwayat') renderRiwayat();
+            }
+
+            // =============================================================
+            // 8. DASHBOARD
+            // =============================================================
+            function updateDashboard() {
+                document.getElementById('dashSaldo').textContent = formatRupiah(state.saldo);
+                document.getElementById('saldoDisplay').textContent = formatRupiah(state.saldo);
+                const total = state.transaksi.length;
+                document.getElementById('dashTotalTransaksi').textContent = total;
+                const pending = state.transaksi.filter(t => t.status === 'pending').length;
+                document.getElementById('dashPending').textContent = pending;
+            }
+
+            function tambahSaldo() {
+                const tambah = prompt('Masukkan nominal saldo yang ingin ditambahkan:', '100000');
+                if (tambah && !isNaN(tambah) && Number(tambah) > 0) {
+                    state.saldo += Number(tambah);
+                    saveState();
+                    updateDashboard();
+                    showToast(`Saldo berhasil ditambahkan ${formatRupiah(Number(tambah))}`, 'success');
+                } else if (tambah !== null) {
+                    showToast('Nominal tidak valid', 'error');
+                }
+            }
+
+            // =============================================================
+            // 9. TAGIHAN (PLN, PDAM, Internet, Seminar)
+            // =============================================================
+            function cekTagihan() {
+                const kategori = document.getElementById('tagihanKategori').value;
+                const nomor = document.getElementById('tagihanNomor').value.trim();
+
+                // validasi
+                const feedback = document.getElementById('tagihanNomorFeedback');
+                const input = document.getElementById('tagihanNomor');
+
+                if (!nomor) {
+                    input.classList.add('is-invalid');
+                    feedback.textContent = 'Nomor pelanggan harus diisi';
+                    return;
+                }
+
+                let isValid = true;
+                if (kategori === 'seminar') {
+                    if (!/^SEM-[0-9]{4}-[0-9]{3}$/.test(nomor)) {
+                        isValid = false;
+                        feedback.textContent = 'Format seminar: SEM-YYYY-XXX (contoh: SEM-2026-001)';
+                    }
+                } else {
+                    if (!/^\d{10,12}$/.test(nomor)) {
+                        isValid = false;
+                        feedback.textContent = 'Nomor harus 10-12 digit angka';
+                    }
+                }
+
+                if (!isValid) {
+                    input.classList.add('is-invalid');
+                    return;
+                }
+                input.classList.remove('is-invalid');
+
+                // cek data
+                const data = billData[kategori];
+                if (!data || !data[nomor]) {
+                    showToast('Nomor pelanggan tidak ditemukan', 'error');
+                    return;
+                }
+
+                const tagihan = data[nomor];
+                state.tagihanData = {
+                    kategori,
+                    nomor,
+                    ...tagihan,
+                    total: tagihan.amount + (tagihan.fine || 0),
+                };
+
+                // tampilkan hasil
+                const card = document.getElementById('hasilTagihanCard');
+                card.style.display = 'block';
+                const content = document.getElementById('hasilTagihanContent');
+                content.innerHTML = `
+                    <div class="row g-2">
+                        <div class="col-sm-6"><strong>Nama Pelanggan</strong></div>
+                        <div class="col-sm-6">${tagihan.name}</div>
+                        <div class="col-sm-6"><strong>Alamat</strong></div>
+                        <div class="col-sm-6">${tagihan.address}</div>
+                        <div class="col-sm-6"><strong>Periode</strong></div>
+                        <div class="col-sm-6">${tagihan.period}</div>
+                        <div class="col-sm-6"><strong>Tagihan Pokok</strong></div>
+                        <div class="col-sm-6">${formatRupiah(tagihan.amount)}</div>
+                        ${tagihan.fine ? `<div class="col-sm-6"><strong>Denda</strong></div><div class="col-sm-6">${formatRupiah(tagihan.fine)}</div>` : ''}
+                        <div class="col-sm-6"><strong>Total</strong></div>
+                        <div class="col-sm-6 fw-bold text-success">${formatRupiah(state.tagihanData.total)}</div>
+                        <div class="col-sm-6"><strong>Jatuh Tempo</strong></div>
+                        <div class="col-sm-6">${tagihan.dueDate}</div>
+                    </div>
+                `;
+
+                // tampilkan metode pembayaran
+                document.getElementById('metodePembayaranContainer').style.display = 'block';
+                document.getElementById('bayarTagihanBtn').style.display = 'none';
+                document.getElementById('metodeDetail').innerHTML = '';
+                state.selectedMetode = null;
+                document.querySelectorAll('.metode-btn').forEach(b => b.classList.remove('selected'));
+
+                showToast('Tagihan ditemukan! Silakan pilih metode pembayaran.', 'info');
+            }
+
+            function pilihMetode(metode) {
+                state.selectedMetode = metode;
+                document.querySelectorAll('.metode-btn').forEach(b => {
+                    b.classList.toggle('selected', b.dataset.metode === metode);
+                });
+
+                const detail = document.getElementById('metodeDetail');
+                let html = '';
+                switch (metode) {
+                    case 'va':
+                        const va = generateVA();
+                        html = `
+                            <strong><i class="fas fa-university"></i> Virtual Account</strong>
+                            <p class="mt-2">Nomor VA: <code class="fs-5 fw-bold">${va}</code></p>
+                            <p class="small text-muted">Transfer ke rekening BCA / BNI / Mandiri a.n PT BayarKita</p>
+                            <div class="alert alert-info small">Instruksi: Gunakan nomor VA di atas sebagai kode pembayaran.</div>
+                        `;
+                        break;
+                    case 'qris':
+                        html = `
+                            <strong><i class="fas fa-qrcode"></i> QRIS</strong>
+                            <div class="text-center my-3" id="qrisContainer"></div>
+                            <p class="small text-muted">Scan QR code menggunakan aplikasi mobile banking.</p>
+                            <div class="alert alert-warning small">⏱️ QRIS berlaku 5 menit</div>
+                        `;
+                        setTimeout(() => {
+                            const container = document.getElementById('qrisContainer');
+                            if (container) {
+                                try {
+                                    new QRCode(container, {
+                                        text: 'BAYARKITA-' + generateId(),
+                                        width: 160,
+                                        height: 160,
+                                        colorDark: '#0d6e4b',
+                                    });
+                                } catch (e) {
+                                    container.innerHTML =
+                                        '<img src="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%230d6e4b\'/%3E%3Crect x=\'10\' y=\'10\' width=\'80\' height=\'80\' fill=\'white\'/%3E%3C/svg%3E" style="width:160px;height:160px;" />';
+                                }
+                            }
+                        }, 100);
+                        break;
+                    case 'teller':
+                        html = `
+                            <strong><i class="fas fa-building"></i> Bayar di Teller</strong>
+                            <p class="mt-2">Kode Pembayaran: <code class="fs-5 fw-bold">${generateId().toUpperCase()}</code></p>
+                            <p class="small">Datang ke kantor kami dengan membawa kode di atas.</p>
+                            <div class="small">
+                                <strong>Lokasi:</strong>
+                                <ul class="list-unstyled mt-1">
+                                    <li>📍 Jakarta Pusat - Jl. Merdeka No. 1</li>
+                                    <li>📍 Bandung - Jl. Asia Afrika No. 45</li>
+                                    <li>📍 Surabaya - Jl. Tunjungan No. 88</li>
+                                </ul>
+                            </div>
+                        `;
+                        break;
+                }
+                detail.innerHTML = html;
+                document.getElementById('bayarTagihanBtn').style.display = 'block';
+            }
+
+            function prosesBayarTagihan() {
+                if (!state.selectedMetode) {
+                    showToast('Pilih metode pembayaran terlebih dahulu!', 'error');
+                    return;
+                }
+                if (!state.tagihanData) {
+                    showToast('Data tagihan tidak ditemukan', 'error');
+                    return;
+                }
+
+                const total = state.tagihanData.total;
+                if (state.saldo < total) {
+                    showToast(`Saldo tidak mencukupi! Saldo Anda ${formatRupiah(state.saldo)}`, 'error');
+                    return;
+                }
+
+                showLoading('Memproses pembayaran tagihan...');
+                setTimeout(() => {
+                    // kurangi saldo
+                    state.saldo -= total;
+                    const transaksi = {
+                        id: generateId(),
+                        tanggal: getNow(),
+                        layanan: 'Tagihan ' + state.tagihanData.kategori.toUpperCase(),
+                        deskripsi: `${state.tagihanData.name} - ${state.tagihanData.period}`,
+                        jumlah: total,
+                        status: 'sukses',
+                        metode: state.selectedMetode,
+                        detail: state.tagihanData,
+                    };
+                    state.transaksi.push(transaksi);
+                    saveState();
+                    updateDashboard();
+
+                    hideLoading();
+                    showToast('✅ Pembayaran berhasil!', 'success');
+
+                    // tampilkan struk
+                    showStruk(transaksi);
+                    // reset
+                    document.getElementById('bayarTagihanBtn').style.display = 'none';
+                    state.tagihanData = null;
+                }, 1500);
+            }
+
+            // =============================================================
+            // 10. SPP / BIAYA KULIAH
+            // =============================================================
+            function cekTagihanSPP() {
+                const nim = document.getElementById('sppNim').value.trim();
+                const feedback = document.getElementById('sppNimFeedback');
+                const input = document.getElementById('sppNim');
+
+                if (!/^\d{9,12}$/.test(nim)) {
+                    input.classList.add('is-invalid');
+                    feedback.textContent = 'NIM harus 9-12 digit angka';
+                    return;
+                }
+                input.classList.remove('is-invalid');
+
+                const data = billData.spp[nim];
+                if (!data) {
+                    showToast('NIM tidak terdaftar', 'error');
+                    return;
+                }
+
+                state.sppData = { nim, ...data };
+                state.sppSelected = [];
+
+                const card = document.getElementById('sppResultCard');
+                card.style.display = 'block';
+                const content = document.getElementById('sppResultContent');
+
+                let html = `
+                    <p><strong>Nama:</strong> ${data.name}</p>
+                    <p><strong>Semester:</strong> ${data.semester}</p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th><input type="checkbox" id="sppSelectAll" onchange="toggleAllSPP()" /></th>
+                                    <th>No</th>
+                                    <th>Deskripsi</th>
+                                    <th>Jumlah</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                data.cicilan.forEach((item, idx) => {
+                    const checked = item.status === 'lunas' ? 'disabled' : '';
+                    const isPaid = item.status === 'lunas';
+                    html += `
+                        <tr>
+                            <td><input type="checkbox" class="spp-checkbox" data-idx="${idx}" ${checked} ${!isPaid ? 'onchange="updateSPPTotal()"' : ''} /></td>
+                            <td>${idx + 1}</td>
+                            <td>${item.desc}</td>
+                            <td>${formatRupiah(item.amount)}</td>
+                            <td><span class="badge ${isPaid ? 'bg-success' : 'bg-warning'}">${isPaid ? 'Lunas' : 'Belum Lunas'}</span></td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table></div>`;
+                content.innerHTML = html;
+                updateSPPTotal();
+                showToast('Data SPP ditemukan! Pilih cicilan yang ingin dibayar.', 'info');
+            }
+
+            function toggleAllSPP() {
+                const checked = document.getElementById('sppSelectAll').checked;
+                document.querySelectorAll('.spp-checkbox:not(:disabled)').forEach(cb => cb.checked = checked);
+                updateSPPTotal();
+            }
+
+            function updateSPPTotal() {
+                const checkboxes = document.querySelectorAll('.spp-checkbox:checked');
+                let total = 0;
+                const data = state.sppData;
+                if (data) {
+                    checkboxes.forEach(cb => {
+                        const idx = parseInt(cb.dataset.idx);
+                        total += data.cicilan[idx].amount;
+                    });
+                }
+                document.getElementById('sppTotalBayar').textContent = formatRupiah(total);
+                state.sppSelected = Array.from(checkboxes).map(cb => parseInt(cb.dataset.idx));
+            }
+
+            function prosesBayarSPP() {
+                const selected = state.sppSelected;
+                if (!selected || selected.length === 0) {
+                    showToast('Pilih minimal satu cicilan!', 'error');
+                    return;
+                }
+
+                const data = state.sppData;
+                let total = 0;
+                selected.forEach(idx => { total += data.cicilan[idx].amount; });
+
+                if (state.saldo < total) {
+                    showToast(`Saldo tidak mencukupi! Saldo Anda ${formatRupiah(state.saldo)}`, 'error');
+                    return;
+                }
+
+                showLoading('Memproses pembayaran SPP...');
+                setTimeout(() => {
+                    state.saldo -= total;
+                    const desc = selected.map(idx => data.cicilan[idx].desc).join(', ');
+                    const transaksi = {
+                        id: generateId(),
+                        tanggal: getNow(),
+                        layanan: 'SPP / Biaya Kuliah',
+                        deskripsi: `${data.name} - ${data.semester} (${selected.length} cicilan)`,
+                        jumlah: total,
+                        status: 'sukses',
+                        metode: 'SPP',
+                        detail: { nim: data.nim, items: selected.map(i => data.cicilan[i]) },
+                    };
+                    state.transaksi.push(transaksi);
+                    // tandai lunas
+                    selected.forEach(idx => { data.cicilan[idx].status = 'lunas'; });
+                    saveState();
+                    updateDashboard();
+
+                    hideLoading();
+                    showToast('✅ Pembayaran SPP berhasil!', 'success');
+                    showStruk(transaksi);
+                    // refresh tampilan
+                    cekTagihanSPP();
+                }, 1500);
+            }
+
+            // =============================================================
+            // 11. PULSA & PAKET DATA
+            // =============================================================
+            function renderPulsaUI() {
+                const grid = document.getElementById('providerGrid');
+                grid.innerHTML = providers.map(p => `
+                    <div class="provider-item" data-provider="${p.id}" onclick="selectProvider('${p.id}')">
+                        <div style="font-size:2.4rem;">${p.icon}</div>
+                        <span>${p.label}</span>
+                    </div>
+                `).join('');
+
+                const nominalGrid = document.getElementById('nominalGrid');
+                nominalGrid.innerHTML = nominalPulsa.map(n => `
+                    <div class="nominal-btn" data-nominal="${n}" onclick="selectNominal(${n})">
+                        ${formatRupiah(n)}
+                    </div>
+                `).join('');
+            }
+
+            function selectProvider(id) {
+                state.selectedProvider = id;
+                document.querySelectorAll('.provider-item').forEach(el => {
+                    el.classList.toggle('selected', el.dataset.provider === id);
+                });
+                // auto detect from nomor
+            }
+
+            function selectNominal(n) {
+                state.selectedNominal = n;
+                document.querySelectorAll('.nominal-btn').forEach(el => {
+                    el.classList.toggle('selected', Number(el.dataset.nominal) === n);
+                });
+                document.getElementById('pulsaCustom').value = '';
+            }
+
+            function cekPulsa() {
+                const nomor = document.getElementById('pulsaNomor').value.trim();
+                const feedback = document.getElementById('pulsaNomorFeedback');
+                const input = document.getElementById('pulsaNomor');
+
+                // validasi nomor
+                if (!/^08\d{8,11}$/.test(nomor)) {
+                    input.classList.add('is-invalid');
+                    feedback.textContent = 'Nomor harus 10-13 digit, dimulai 08';
+                    return;
+                }
+                input.classList.remove('is-invalid');
+
+                // deteksi provider dari prefix
+                let detected = null;
+                for (const [key, prefixes] of Object.entries(providerPrefix)) {
+                    for (const pref of prefixes) {
+                        if (nomor.startsWith(pref)) {
+                            detected = key;
+                            break;
+                        }
+                    }
+                    if (detected) break;
+                }
+
+                // ambil nominal
+                let nominal = state.selectedNominal;
+                const custom = document.getElementById('pulsaCustom').value.trim();
+                if (custom && !isNaN(custom) && Number(custom) > 0) {
+                    nominal = Number(custom);
+                }
+
+                if (!nominal || nominal < 5000) {
+                    showToast('Pilih nominal pulsa atau isi custom (min Rp5.000)', 'error');
+                    return;
+                }
+
+                // provider
+                const providerLabel = providers.find(p => p.id === detected)?.label || 'Unknown';
+                const harga = nominal + (nominal * 0.05); // simulasi biaya admin 5%
+
+                state.pulsaData = {
+                    nomor,
+                    provider: detected || 'unknown',
+                    providerLabel,
+                    nominal,
+                    harga: Math.round(harga),
+                };
+
+                const preview = document.getElementById('pulsaPreview');
+                preview.style.display = 'block';
+                document.getElementById('pulsaPreviewContent').innerHTML = `
+                    <div class="row g-2">
+                        <div class="col-sm-5"><strong>Nomor Tujuan</strong></div>
+                        <div class="col-sm-7">${nomor}</div>
+                        <div class="col-sm-5"><strong>Provider</strong></div>
+                        <div class="col-sm-7">${providerLabel} ${detected ? '✅' : '⚠️ tidak terdeteksi'}</div>
+                        <div class="col-sm-5"><strong>Nominal</strong></div>
+                        <div class="col-sm-7">${formatRupiah(nominal)}</div>
+                        <div class="col-sm-5"><strong>Biaya Admin</strong></div>
+                        <div class="col-sm-7">${formatRupiah(Math.round(nominal * 0.05))}</div>
+                        <div class="col-sm-5"><strong>Total</strong></div>
+                        <div class="col-sm-7 fw-bold text-success">${formatRupiah(state.pulsaData.harga)}</div>
+                    </div>
+                `;
+                showToast('Preview pembelian pulsa siap', 'info');
+            }
+
+            function prosesBayarPulsa() {
+                if (!state.pulsaData) {
+                    showToast('Silakan cek pulsa terlebih dahulu', 'error');
+                    return;
+                }
+                if (state.saldo < state.pulsaData.harga) {
+                    showToast(`Saldo tidak mencukupi! Saldo Anda ${formatRupiah(state.saldo)}`, 'error');
+                    return;
+                }
+
+                showLoading('Memproses pembelian pulsa...');
+                setTimeout(() => {
+                    state.saldo -= state.pulsaData.harga;
+                    const transaksi = {
+                        id: generateId(),
+                        tanggal: getNow(),
+                        layanan: 'Pulsa / Paket Data',
+                        deskripsi: `${state.pulsaData.providerLabel} - ${state.pulsaData.nomor} (${formatRupiah(state.pulsaData.nominal)})`,
+                        jumlah: state.pulsaData.harga,
+                        status: 'sukses',
+                        metode: 'Pulsa',
+                        detail: state.pulsaData,
+                    };
+                    state.transaksi.push(transaksi);
+                    saveState();
+                    updateDashboard();
+
+                    hideLoading();
+                    showToast('✅ Pembelian pulsa berhasil!', 'success');
+                    showStruk(transaksi);
+                    state.pulsaData = null;
+                    document.getElementById('pulsaPreview').style.display = 'none';
+                }, 1500);
+            }
+
+            // =============================================================
+            // 12. RIWAYAT
+            // =============================================================
+            function renderRiwayat() {
+                const tbody = document.getElementById('riwayatBody');
+                let data = state.transaksi;
+                if (state.filterStatus !== 'semua') {
+                    data = data.filter(t => t.status === state.filterStatus);
+                }
+                if (data.length === 0) {
+                    tbody.innerHTML =
+                        `<tr><td colspan="7" class="text-center text-muted">Tidak ada transaksi</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = data.map((t, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${t.tanggal}</td>
+                        <td>${t.layanan}</td>
+                        <td>${t.deskripsi}</td>
+                        <td>${formatRupiah(t.jumlah)}</td>
+                        <td><span class="status-badge ${t.status}">${t.status}</span></td>
+                        <td><button class="btn btn-sm btn-outline-custom" onclick="showStrukById('${t.id}')"><i class="fas fa-eye"></i></button></td>
+                    </tr>
+                `).join('');
+            }
+
+            function filterRiwayat(status) {
+                state.filterStatus = status;
+                renderRiwayat();
+            }
+
+            function clearRiwayat() {
+                if (confirm('Hapus semua riwayat transaksi?')) {
+                    state.transaksi = [];
+                    saveState();
+                    renderRiwayat();
+                    updateDashboard();
+                    showToast('Riwayat dihapus', 'info');
+                }
+            }
+
+            // =============================================================
+            // 13. STRUK / BUKTI PEMBAYARAN
+            // =============================================================
+            let strukData = null;
+
+            function showStruk(transaksi) {
+                strukData = transaksi;
+                const modal = new bootstrap.Modal(document.getElementById('strukModal'));
+                const body = document.getElementById('strukBody');
+                body.innerHTML = `
+                    <div class="text-center mb-3">
+                        <h4 class="fw-bold text-primary">BayarKita</h4>
+                        <p class="text-muted small">Bukti Pembayaran</p>
+                    </div>
+                    <hr />
+                    <div class="row g-2">
+                        <div class="col-5"><strong>ID Transaksi</strong></div>
+                        <div class="col-7">${transaksi.id}</div>
+                        <div class="col-5"><strong>Tanggal</strong></div>
+                        <div class="col-7">${transaksi.tanggal}</div>
+                        <div class="col-5"><strong>Layanan</strong></div>
+                        <div class="col-7">${transaksi.layanan}</div>
+                        <div class="col-5"><strong>Deskripsi</strong></div>
+                        <div class="col-7">${transaksi.deskripsi}</div>
+                        <div class="col-5"><strong>Metode</strong></div>
+                        <div class="col-7">${transaksi.metode}</div>
+                        <div class="col-5"><strong>Jumlah</strong></div>
+                        <div class="col-7 fw-bold fs-5 text-success">${formatRupiah(transaksi.jumlah)}</div>
+                        <div class="col-5"><strong>Status</strong></div>
+                        <div class="col-7"><span class="badge bg-success">${transaksi.status}</span></div>
+                    </div>
+                    <hr />
+                    <p class="text-muted small text-center mb-0">Terima kasih telah menggunakan BayarKita! 🙏</p>
+                `;
+                modal.show();
+            }
+
+            function showStrukById(id) {
+                const t = state.transaksi.find(item => item.id === id);
+                if (t) showStruk(t);
+                else showToast('Transaksi tidak ditemukan', 'error');
+            }
+
+            function downloadPDFStruk() {
+                if (!strukData) {
+                    showToast('Tidak ada data struk', 'error');
+                    return;
+                }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const d = strukData;
+                doc.setFontSize(18);
+                doc.text('BayarKita - Bukti Pembayaran', 20, 30);
+                doc.setFontSize(12);
+                doc.text(`ID: ${d.id}`, 20, 50);
+                doc.text(`Tanggal: ${d.tanggal}`, 20, 60);
+                doc.text(`Layanan: ${d.layanan}`, 20, 70);
+                doc.text(`Deskripsi: ${d.deskripsi}`, 20, 80);
+                doc.text(`Metode: ${d.metode}`, 20, 90);
+                doc.text(`Jumlah: ${formatRupiah(d.jumlah)}`, 20, 100);
+                doc.text(`Status: ${d.status}`, 20, 110);
+                doc.text('Terima kasih!', 20, 130);
+                doc.save(`struk-${d.id}.pdf`);
+                showToast('PDF berhasil diunduh', 'success');
+            }
+
+            // =============================================================
+            // 14. EVENT BINDING & INIT
+            // =============================================================
+
+            // navbar navigation
+            document.querySelectorAll('.navbar .nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.dataset.page;
+                    if (page) navigateTo(page);
+                });
+            });
+
+            // enter key for tagihan
+            document.getElementById('tagihanNomor').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') cekTagihan();
+            });
+            document.getElementById('sppNim').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') cekTagihanSPP();
+            });
+            document.getElementById('pulsaNomor').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') cekPulsa();
+            });
+
+            // auto detect provider from hp
+            document.getElementById('pulsaNomor').addEventListener('input', function() {
+                const val = this.value.trim();
+                if (val.length >= 4) {
+                    for (const [key, prefixes] of Object.entries(providerPrefix)) {
+                        for (const pref of prefixes) {
+                            if (val.startsWith(pref)) {
+                                selectProvider(key);
+                                return;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // init
+            loadState();
+            renderPulsaUI();
+            updateDashboard();
+            renderRiwayat();
+
+            console.log('🚀 BayarKita siap digunakan!');
+            console.log('📦 Data dummy:', billData);
+
+            // expose functions to global
+            window.navigateTo = navigateTo;
+            window.tambahSaldo = tambahSaldo;
+            window.cekTagihan = cekTagihan;
+            window.pilihMetode = pilihMetode;
+            window.prosesBayarTagihan = prosesBayarTagihan;
+            window.cekTagihanSPP = cekTagihanSPP;
+            window.toggleAllSPP = toggleAllSPP;
+            window.updateSPPTotal = updateSPPTotal;
+            window.prosesBayarSPP = prosesBayarSPP;
+            window.selectProvider = selectProvider;
+            window.selectNominal = selectNominal;
+            window.cekPulsa = cekPulsa;
+            window.prosesBayarPulsa = prosesBayarPulsa;
+            window.filterRiwayat = filterRiwayat;
+            window.clearRiwayat = clearRiwayat;
+            window.showStrukById = showStrukById;
+            window.downloadPDFStruk = downloadPDFStruk;
+            window.showStruk = showStruk;
+            window.showToast = showToast;
+
+        })();
+    </script>
+
+</body>
+</html>
